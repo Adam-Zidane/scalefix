@@ -5,12 +5,19 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - run: brew install ldid make dpkg xz
-      - run: |
-          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
+      - name: Tools
+        run: brew install ldid make dpkg xz
+      - name: Theos
+        run: |
+          set -e
+          rm -rf "$HOME/theos"
+          git clone --recursive --depth=1 https://github.com/theos/theos.git "$HOME/theos"
+          rm -rf "$HOME/theos/sdks"
           git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
+          ls "$HOME/theos/sdks"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-      - run: gmake package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+      - name: Build
+        run: gmake package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
       - uses: actions/upload-artifact@v4
         with:
           name: ScaleFix-deb
