@@ -9,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <notify.h>
 
 extern char **environ;
 static CFStringRef const kDomain = CFSTR("com.scalefix");
@@ -74,6 +75,30 @@ static float my_MGGetFloat32Answer(CFStringRef key, float def) {
     return orig_MGGetFloat32Answer(key, def);
 }
 
+#pragma mark - lock state + fresh-install reset
+
+static BOOL deviceLocked(void) {
+    static int token = 0;
+    if (!token) notify_register_check("com.apple.springboard.lockstate", &token);
+    uint64_t st = 0;
+    notify_get_state(token, &st);
+    return st != 0;
+}
+// Prefs survive uninstall, so clear old flags the first time this version runs.
+static void resetIfNewInstall(void) {
+    CFTypeRef v = readPref(CFSTR("ver"));
+    BOOL same = v && CFGetTypeID(v) == CFStringGetTypeID() &&
+                CFStringCompare((CFStringRef)v, CFSTR("0.2.0"), 0) == kCFCompareEqualTo;
+    if (v) CFRelease(v);
+    if (same) return;
+    CFPreferencesSetAppValue(CFSTR("ver"), CFSTR("0.2.0"), kDomain);
+    setPrefBool(CFSTR("disabled"), NO);
+    setPrefInt(CFSTR("fails"), 0);
+    setPrefBool(CFSTR("started"), NO);
+    setPrefBool(CFSTR("stable"), YES);
+    setPrefFloat(CFSTR("confirmedScale"), 0);
+}
+
 #pragma mark - revert + confirmation (SpringBoard only)
 
 static void restartBackboardd(void) {
@@ -95,9 +120,9 @@ static void showConfirm(void) {
     [sWindow makeKeyAndVisible];
 
     UIAlertController *a = [UIAlertController alertControllerWithTitle:@"ScaleFix"
-        message:@"Keep this UI scale? Reverting in 15 s"
+        message:@"Keep this UI scale? Reverting in 30 s"
         preferredStyle:UIAlertControllerStyleAlert];
-    __block int left = 15;
+    __block int left = 30;
     __block NSTimer *timer = nil;
     [a addAction:[UIAlertAction actionWithTitle:@"Keep" style:UIAlertActionStyleDefault handler:^(UIAlertAction *x) {
         [timer invalidate];
@@ -121,7 +146,7 @@ static BOOL guardAllows(void) {
     BOOL started = prefBool(CFSTR("started"), NO), stable = prefBool(CFSTR("stable"), YES);
     float fails = prefFloat(CFSTR("fails"), 0);
     fails = (started && !stable) ? fails + 1 : 0;
-    if (fails >= 2) {
+    if (fails >= 3) {
         setPrefBool(CFSTR("disabled"), YES);
         setPrefInt(CFSTR("fails"), 0); setPrefBool(CFSTR("started"), NO); setPrefBool(CFSTR("stable"), YES);
         return NO;
@@ -140,6 +165,7 @@ __attribute__((constructor)) static void scalefix_init(void) {
         const char *prog = getprogname();
         BOOL isSB = prog && strcmp(prog, "SpringBoard") == 0;
 
+        resetIfNewInstall();
         if (prefBool(CFSTR("disabled"), NO)) return;
         if (isSB && !guardAllows()) return;
 
@@ -153,8 +179,15 @@ __attribute__((constructor)) static void scalefix_init(void) {
         if (b) MSHookFunction(b, (void *)my_MGGetFloat32Answer, (void **)&orig_MGGetFloat32Answer);
 
         if (isSB) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 8 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                if (fabsf(prefFloat(CFSTR("confirmedScale"), 0) - gScale) > 0.001f) showConfirm();
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (fabsf(prefFloat(CFSTR("confirmedScale"), 0) - gScale) <= 0.001f) return;
+                __block int waited = 0;
+                [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t) {
+                    waited++;
+                    if (waited < 5) return;
+                    if (!deviceLocked()) { [t invalidate]; showConfirm(); return; }
+                    if (waited >= 150) { [t invalidate]; revertNow(); }
+                }];
             });
         }
     }
