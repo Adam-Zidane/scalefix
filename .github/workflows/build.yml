@@ -12,8 +12,10 @@ jobs:
           set -e
           rm -rf "$HOME/theos"
           git clone --recursive --depth=1 https://github.com/theos/theos.git "$HOME/theos"
-          rm -rf "$HOME/theos/sdks"
-          git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
+          if [ -z "$(ls -A "$HOME/theos/sdks" 2>/dev/null)" ]; then
+            rm -rf "$HOME/theos/sdks"
+            git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
+          fi
           ls "$HOME/theos/sdks"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
       - name: Build
