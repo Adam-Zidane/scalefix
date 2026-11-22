@@ -1,0 +1,9 @@
+Package: com.scalefix.tweak
+Name: ScaleFix
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: Experimental UI scale override (makes a 960px canvas look like a ~390pt screen), with auto-revert
+Maintainer: you
+Author: you
+Section: Tweaks
+Depends: mobilesubstrate, firmware (>= 15.0)
