@@ -18,6 +18,8 @@ jobs:
           fi
           ls "$HOME/theos/sdks"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+      - name: Fix permissions
+        run: chmod 755 layout/DEBIAN/postinst
       - name: Build
         run: gmake package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
       - uses: actions/upload-artifact@v4
