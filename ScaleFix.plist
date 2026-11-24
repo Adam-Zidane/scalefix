@@ -4,16 +4,11 @@
 <dict>
 	<key>Filter</key>
 	<dict>
-		<key>Bundles</key>
-		<array><string>com.apple.UIKit</string></array>
 		<key>Executables</key>
 		<array>
+			<string>SpringBoard</string>
 			<string>backboardd</string>
-			<string>com.apple.WebKit.WebContent</string>
-			<string>com.apple.WebKit.GPU</string>
 		</array>
-		<key>Mode</key>
-		<string>Any</string>
 	</dict>
 </dict>
 </plist>
