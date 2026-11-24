@@ -1,0 +1,4 @@
+#!/bin/sh
+rm -f /var/mobile/Library/Preferences/com.scalefix.plist
+killall cfprefsd 2>/dev/null
+exit 0
