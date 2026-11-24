@@ -1,0 +1,9 @@
+Package: com.scalefix.tweak
+Name: ScaleFix
+Version: 0.3.0
+Architecture: iphoneos-arm64
+Description: Experimental UI scale override (750x1334 canvas at scale 2 = iPhone 8 layout), with auto-revert
+Maintainer: you
+Author: you
+Section: Tweaks
+Depends: mobilesubstrate, firmware (>= 15.0)
